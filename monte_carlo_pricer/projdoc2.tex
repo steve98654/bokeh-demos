@@ -1,0 +1,1230 @@
+\documentclass{amsart}
+\usepackage{amssymb}
+\usepackage{graphics}
+\usepackage{graphicx}
+\usepackage{verbatim}
+\usepackage{amssymb, epsfig}
+\usepackage[leqno]{amsmath}
+\usepackage{eurosym}
+\usepackage{listings}
+
+\def\P{\mathbb{P}}
+\def\Q{\mathbb{Q}}
+\def\E{\mathbb{E}}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{assumption}[theorem]{Assumption}
+
+\textheight=9.5 in
+\textwidth=6.5in
+\topmargin=-.0in
+\hoffset=-.75in
+
+\title{Bayesian Value at Risk Metrics for Equity Portfolios}
+\author{Eric Hendries, Jun Huang, Ruixue Li, Xiao Li, Yiyang Qi, Helene Sajer, Stephen Taylor, John 
+Zerolis}
+\email{Corresponding Author: Stephen Taylor, Morgan Stanley, Email: steve98654-at-gmail.com}
+
+\begin{document}
+
+\maketitle
+
+
+\begin{abstract}
+We develop a Bayesian framework for estimating high quantiles of the relative return loss 
+distribution of equity portfolios.  This framework allows for the incorporation of both 
+quantitative data via a parametric model for the loss distribution as well as 
+qualitative information, specified independent of the data, by the choice 
+of a prior distribution over the model parameters. We apply these methods in the case of 
+one and two dimensional models to estimate distribution parameters and associated error 
+bounds from which 99\% VaR values are estimated.
+Finally, we systematically apply our framework to four test portfolios, compute 
+summary statistics related to model performance, and report the results.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduction and Overview}
+
+
+The daily relative return distribution of a portfolio characterizes the
+risk profile of that position on an end of day time scale.  There are several summary statistics 
+associated with this distribution that are commonly used in practice
+to quantify risks inherent in the portfolio such as its mean,  
+variance, quantiles, and functions of these statistics.  
+Value at Risk (VaR) models are primarily concerned with the estimation of
+high quantiles of the daily relative return loss distribution of a collection of financial assets.  
+There are a number of statistical techniques that are utilized to
+carry out this estimation procedure, including historical \cite{Barone-Adesi-99,Pritsker-06}
+and hypothetical simulation \cite{Berkowitz-99}, 
+parametric modeling \cite{McNeil-05,Meucci-05}, 
+and a wide variety of less common methods 
+\cite{Butler-98,Chen-05,Hendricks-99,Longin-00,McNeil-00,Scaillet-04}.  
+Bayesian inference offers an additional set of tools to model a portfolio's relative 
+return distribution which provide advantages over their more traditional
+frequentist counterparts in certain situations.
+
+Bayesian methods have been applied to VaR estimation by several authors 
+\cite{Ausin-14,Hoogerheide-08, Pollard-07,Siu-04}.
+These techniques have three main features that merit
+their utilization for the construction of portfolio risk metrics.  
+First, they allow for the incorporation of qualitative 
+information from operational risk analysts that is not necessarily reflected 
+in quantitative data.
+Second, these methods can produce reasonable results when one only has a 
+limited amount of data at hand, i.e. when sample sizes are small.  Third, 
+although computations can be potentially burdensome, the framework of Bayesian 
+inference is relatively simple and intuitive (see \cite{Gelman-03} for a review of 
+Bayesian data analysis).  We seek to add to the existing literature of Bayesian 
+VaR methods by both considering the general class of Burr XII extreme value
+distributions and providing numerical methods for estimating error bounds on the 
+best fit model parameter in the case of a two dimensional model using information 
+contained in the posterior distribution.
+
+The Bayesian VaR models that we consider contain several components.  First, 
+each model requires the specification of a parametric model for the daily 
+relative return distribution of a portfolio.
+Second, we must select a prior distribution for the unknown model parameters that we are 
+seeking to estimate.  This distribution is used 
+to incorporate a priori information about the model into the estimation procedure independent 
+of the relative return data.  The likelihood function for the model is then 
+developed and Bayes' theorem is applied to compute a 
+posterior distribution.  As the number of data points added to the  
+likelihood function increases, the posterior 
+distribution becomes progressively localized about the best fit model parameters 
+reflecting that small sample size estimation error
+becomes negligible. Next, we select a model from the posterior parameter distribution by 
+finding its maximizer which we refer to as the 
+maximum a posteriori (MAP) estimator.
+We also construct a 95\% Bayesian credible region about this value.  Using this region, we 
+select three models 
+determined by the MAP estimator and the VaR minimizer and maximizer parameter values
+determined by optimizing the 99\% VaR by varying the model parameters over the 
+95\% credible region. 
+We finally estimate the 99\%-ile for each of these three portfolio loss distributions.
+These relative return loss distributions are translated into portfolio profit and 
+loss (P\&L) distributions, which are used to estimate a 99\% VaR value for the portfolio 
+as well as a corresponding error bound on this estimator.
+
+In Section 2, we review background material in Bayesian inference that is relevant to
+the develop of our VaR models and demonstrate how Bayes' theorem 
+may be applied to parametric model estimation and error bound construction. 
+In Section 3, we describe the construction of our data set of 
+end of day equity price and volume data.  We then analyze the correlation and relative return 
+distribution structure of this 
+data and use the results to construct four test portfolios needed for subsequent analysis. 
+In Section 4, we outline the specification of a Bayesian VaR model and provide details 
+of how it can be implemented both in one and two dimensional settings.  We provide an argument 
+for why one only needs to consider the boundary of a Bayesian credible region in our example 
+to compute error estimates for the model parameters in the two dimensional setting which significantly 
+simplifies the search required in the next portion of our analysis.
+Next, in Section 5 we define several performance metrics used to 
+assess the quality of our models.  We iteratively compute these performance metrics 
+over roughly seven years of trade data and both plot the resulting VaR and associated 
+error estimates for the one and two dimensional models as well as test and report   
+ performance metrics for our models. Lastly, in Section 6, we summarize our results and 
+describe a few issues and potential extensions that we found during the course of model development. 
+
+\textbf{Acknowledgements}: 
+We would like to thank both the University of Chicago and CME Group for providing a 
+venue and services for gathering data over the course of this project.  Stephen 
+Taylor would like to thank Marcelo Disconzi, Olympia Hadjiliadis, and Hongzhong Zhang 
+for comments that improved the content 
+and exposition of this article. 
+
+\section{Bayesian Model Selection and Parameter Error Estimation}
+
+A central aim of Bayesian inference is to merge information contained in data with 
+external qualitative information that specifies one's confidence in potential model 
+parameter estimates independent of any observed data. 
+We first summarize Bayes' 
+theorem, then outline how it may be applied to parametric model estimation, and finally 
+highlight one method that may be used to determine error bounds on the best fit model parameters. 
+
+Given a sample space $\Omega$ and a probability measure $P:\Omega\rightarrow[0,1]$, 
+let $A$, $B \subset\Omega$ be two events.  Bayes' theorem is an identity between 
+the individual probabilities of these events $P(A)$, $P(B)$ and their associated conditional 
+probabilities $P(A|B)$, $P(B|A)$ that follows directly from the definition of 
+conditional probability and takes the form
+%
+\begin{equation}
+    P(A|B) P(B) = P(B|A) P(A) \:\:\longrightarrow \:\:P(A|B) = \frac{P(B|A)P(A)}{P(B)}
+    \propto P(B|A)P(A). \label{baythm}
+\end{equation}
+%
+%Here $P(A)$ is called the prior and is an input that quantifies a modeler's 
+%degree of belief in how likely the event $A$ is to occur. The conditional 
+%probability $P(A|B)$ is called the posterior distribution, and the 
+%conditional probability $P(B|A)$ is called the likelihood and can be 
+%read as how likely is it that the event $A$ will occur given that 
+%event $B$ has already occurred.  The above equation 
+%can be read as the posterior probability is proportional to the prior 
+%times the likelihood. 
+
+Equation (\ref{baythm}) may be used as a basis for fitting  a parametric model to data.  
+We consider models that are parameterized by a set of $m$ parameters 
+$\Theta = \{\theta_1,\ldots,\theta_m\}$
+alongside an associated data set $x = (x_1,\dots, x_n)$ where in our examples we 
+take $x_i\in\mathbb{R}$ and 
+$m$ to be far less than $n$ in order to ensure that we are able to estimate model parameters 
+to a reasonable degree of accuracy. Let the sample space $\Omega$ be the joint set 
+of parametric models $\Theta$ 
+under consideration and the  set of possible samples of the form $x$ that can be drawn from these models.  
+In this context, equation (\ref{baythm}) may be expressed as 
+%
+\begin{equation}
+    P(\Theta|x) = \frac{P(x|\Theta)P(\Theta)}{P(x)}\propto P(x|\Theta) P(\Theta).
+    \label{mbt}
+\end{equation}
+%
+We aim to compute the probability distribution of the true unknown model 
+parameters $\Theta$ given that we have observed a dataset $x$
+by evaluating the likelihood function of this class of models on $x$ while also
+assuming that $\Theta$ have a prior probability 
+$P(\Theta)$ of being the parameters that best represent the data.
+We provide two inputs to this procedure: the prior parameter distribution $P(\Theta)$ and 
+a model likelihood function $P(x|\Theta)$.  
+Given these two inputs, one can then compute $P(x)$, in some cases explicitly but more typically 
+numerically, by noting that it is the normalization factor 
+used to construct the posterior distribution $P(\Theta|x)$. If $D\subset\mathbb{R}^m$ denotes 
+the set of possible model parameter values, then
+%
+\begin{equation}
+    P(x) = \int_D P(x|\Theta) P(\Theta) d\Theta. \label{normfact}
+\end{equation}
+%
+The distribution $P(\Theta|x)$ is called the posterior distribution and it 
+provides a means of assessing how well different models simultaneously fit both the 
+data and prior parameter distribution.  The posterior distribution may be used to 
+select model parameters as well as establish error bounds on these parameters.
+We use the MAP estimator to select the best fit model for a portfolio's daily relative return data. 
+In addition to selecting a single model, we also construct error  
+ bounds on the best fit model parameters. We first discuss how one may 
+develop such bounds in a one dimensional setting 
+and then examine the more involved two dimensional case.
+
+Consider a one parameter posterior distribution $\phi(\theta)$  with 
+model parameter $\theta$.  The maximum a posteriori estimator $\hat{\theta}$ 
+of $\theta$ is defined by $\hat{\theta} = \mathrm{argmax}\:\phi(\theta)$. We would 
+like to compute error bounds on $\hat{\theta}$; there are multiple ways to proceed, and 
+we take a level set approach. Let $z\in[0,\max\phi)$ and consider 
+    the equation $\phi(\theta)=z$.  Although 
+this equation may have any number of solutions, we will only be interested 
+in the case where $\phi$ is a nowhere constant unimodal distribution. 
+In this setting, there are 
+two solutions, $\theta_-^z$ and $\theta_+^z$, to this equation where $\hat{\theta}\in[\theta_-^z,\theta_+^z]$.  
+For a given confidence level $\alpha=0.95$, the level set $z$ is determined by solving 
+%
+\begin{equation}
+    \alpha = \int_{\theta_-^z}^{\theta_+^z} \phi(\theta)d\theta,
+\end{equation}
+%
+as a function of $z$; we later describe how we implement a stable numerical method 
+to solve equations of this form.  The proportion of the total probability mass under the posterior 
+distribution $\phi(\theta)$ contained in the
+error bound interval $[\theta_-^z,\theta_+^z]$ is equal to $\alpha$.  We now have two lower and upper 
+bound return distribution models with parameters $\theta_-^z$ and $\theta_+^z$ that may be used 
+to construct error bounds on the MAP VaR quantile estimator $\hat\theta$
+of the relative return distribution of a portfolio, i.e. 
+$\hat{\theta}$ is the best fit model parameter and lies in the interval $[\theta_-^z,\theta_+^z]$
+with $(100\alpha)\%$ confidence.
+If we model the portfolio relative return distribution by a 
+one dimensional parametric class of densities $\phi(\theta)$, then we can consider three 
+models $\phi(\theta_-^z)$, $\phi(\hat{\theta})$, and $\phi(\theta_+^z)$ from 
+this set of distributions. Finally, we estimate the $q=0.99$ quantile of  
+each associated loss distribution which may be used 
+in tandem with the portfolio P\&L time series to estimate the 99\% VaR for the portfolio and corresponding 
+error bounds on this statistics.
+We provide more details behind our implementation of this procedure below and now 
+discuss how these techniques extend to a two dimensional model.
+
+Suppose that we would like to fit a two dimensional model with parameters $\theta_1$, $\theta_2$
+to a daily relative return time series of a portfolio and denote the associated posterior distribution 
+(\ref{mbt}) by $\phi(\theta_1,\theta_2)$.
+We may construct an analogue of the above error bound on both $\theta_1$ and $\theta_2$ by 
+defining a credible region $B_z\subset\mathbb{R}^2$, where $(\theta_1,\theta_2)\in B_z$.
+If $\theta=(\theta_1,\theta_2)\in\mathbb{R}^2$ and we again restrict $\phi(\theta_1,\theta_2)$
+to the set of unimodal nowhere constant distributions, then 
+the level set $\phi(\theta_1,\theta_2)=z$ for $z\in[0,\max(\phi))$ defines a curve in 
+$\mathbb{R}^2$ that bounds a region $B_z\subset\mathbb{R}^2$. 
+Extending our previous procedure, we select $z$ such that 
+%
+\begin{equation}
+    \alpha = \int_{B_z} \phi(\theta_1,\theta_2)d\theta_1d\theta_2,
+\end{equation}
+%
+again taking $\alpha=0.95$. The procedure for finding 
+the optimal $z$ is more involved than in the one dimensional case, and we describe 
+our method for estimating $z$ in detail below. We finally compute a 
+VaR error bound at the $\alpha$ level by both maximizing and minimizing the 99\% quantile function of the 
+posterior distribution associated with $\phi(\theta_1,\theta_2)$ 
+by varying the model parameters over $B_z$.
+We now apply these techniques to end of day relative return data for four test equity portfolios 
+but first turn to summarizing the data used to construct these time series.
+
+\section{Data Analysis and Portfolio Specification}
+
+We now describe our equity market data sourcing, extraction, cleaning, formatting, 
+and portfolio construction process. 
+First, we outline the scope of the equity data that we analyze, 
+including the time frame that we consider and the data providers that we utilize.
+Next, we display a portion of the data by applying a hierarchical clustering method to the 
+pairwise end of day relative return time series of the one hundred largest 
+market capitalized stocks in our dataset by  
+plotting an associated correlation heat map.  We also examine
+how the distribution of the pairwise correlations between these one hundred stocks
+varies over time. 
+Then, we specify four test portfolios from subsets of these one hundred 
+stocks and fit several parametric distributions to the daily relative returns of these 
+portfolios through maximum likelihood estimation in order to select a model which  
+will later be used to demonstrate our Bayesian VaR methods.
+
+The initial data set that we consider consists 
+of end of day data for the 331 stocks that were members of the  
+S\&P 500 as of Jan 19, 2014 which remained in the index since Jan 5, 2007.  
+We extract the individual ticker names of these stocks, their associated company names and 
+sector classification, daily high and low prices, end of day prices, 
+and the associated daily market capitalization of each company from the Bloomberg terminal 
+using Bloomberg's MATLAB API over the Jan 5, 2007 to Jan 19, 2014 time period.  
+We also extract the same information, when available, from Yahoo! Finance, 
+Google Finance, and a CRSP equity database for comparison purposes.
+
+There are several discrepancies between these data sets due mostly to stock splits, 
+price jumps stemming from dividend payments, and missing data.  
+We found overall that the Bloomberg data tended to require the least amount of filtering 
+and preparation of our available sources 
+and  decided to utilize this split and dividend adjusted data for subsequent 
+analysis. Next, we summarize our data by restricting
+the 331 surviving equities to the top one hundred 
+stocks by market capitalization on 1/19/2014 and 
+displaying a correlation heat map between their relative return time series.
+We now describe the algorithm behind the construction of 
+this correlation heat map which summarizes the dependence structure between these assets.
+
+We modify a MATLAB implementation of an agglomerative (bottom -- up) hierarchical clustering algorithm 
+called clustergram, that has been used in biological applications \cite{Bar-Joseph-01} in order 
+to construct 
+a correlation heat map from the relative returns of the one hundred stocks that we examine.
+One advantage of using hierarchical clustering to produce a correlation heat map is that 
+it brings out a sector and subsector structure from the stocks only using their relative return 
+time series. 
+Specifically, pairs of stocks in like sectors (e.g. technology) tend to move in tandem with 
+one another, or equivalently, exhibit a higher degree of positive correlation between their relative returns
+than pairs of stocks taken from distinct sectors. 
+
+The clustering procedure that we utilize seeks to build a hierarchy of clusters first between
+different sets of assets and then iteratively constructs  
+clusters between the previously grouped sets of assets. 
+The output of this method is a classification tree that defines potentially several layers 
+of sectors and subsectors which assign a hierarchy of groups to each individual equity. 
+We take an agglomerative approach to clustering in our example by first
+treating each individual stock as a separate cluster, then cluster stocks that share a similar property 
+(e.g. have a high positive correlation).  Next, we cluster common groups of stocks 
+that are the output from the previous step according to a linkage criteria which measures the similarity between different sets of stocks.
+
+Specifying the similarity and linkage criteria are the key choices one needs to make when defining
+a clustering algorithm of this form.  In our example, we first let $
+r = \{r_1,\ldots, r_{100}\}$ denote the set of one hundred different equity relative return time 
+series that we outlined above; also let $\rho_{ij}$ denote the Pearson correlation between the relative returns 
+of the $i$-th and $j$-th stock. 
+Stock pairs whose relative returns are highly correlated are deemed to 
+be more similar to one another than those that have very low or negative correlation.  
+The next step is to first cluster the individual stocks into groups that have similar 
+pairwise correlation 
+and subsequently cluster these initial groups of stocks into fewer larger groups that 
+share the same property of being highly correlated with one another.  
+In order to carry out this procedure,
+for two equity time series subsets $A,B\subset r$, 
+we define an average linkage clustering criteria $d(A,B)$ known as the 
+unweighted pair group method with arithmetic mean (UPGMA) by 
+%
+\begin{equation}
+    d(A,B) = \frac{1}{|A||B|} \sum_{i\in A}\sum_{j\in B} \rho_{ij},
+\end{equation}
+%
+to be the mean correlation between these two sets. Stocks are then iteratively clustered 
+according to an optimal leaf ordering criteria based on $d(A,B)$ (c.f. \cite{Bar-Joseph-01})
+and the final output of this algorithm is a tree that describes the hierarchical relationship 
+between the individual stocks.  This tree can be converted to an ordering of the names of the 
+stocks that is used for correlation heat map display purposes.   In Figure  
+\ref{corrheatmap1}, we plot the output of this procedure for the one hundred stocks that we 
+consider in the form of a correlation heat map. 
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{correlationheatmap.eps}
+    \caption{Correlation heat map of the one hundred largest stocks by market 
+     capitalization that we consider.  Note that 
+    the square regions as well as the sub-square regions bring out the sector structure inherent 
+    in this data.}
+    \label{corrheatmap1}
+\end{figure}
+
+Note that there are several square like structures in this correlation heat map.  These  
+indicate groups of stocks all of whose pairwise returns are highly correlated with 
+one another when compared to a randomly chosen pair of stocks from the one hundred 
+names that we are examining. We next plot correlation heat maps between several 
+subgroups of stocks in Figure \ref{intracor}. In this upper left plot of this 
+figure, we display a heat map between seven technology stocks that have relatively 
+low pairwise correlations when compared with other sectors that we consider.  
+The upper middle heat map is the block of stocks with high correlation in the 
+middle of Figure \ref{corrheatmap1}. 
+After reviewing the ticker names for these stocks, 
+we see that they all represent large financial companies. A second nice feature of the 
+hierarchical clustering algorithm that we use is that it can extract sub-sectors from these 
+initial first level stock sectors.  This 
+can be seen in the upper right plot where we zoom in on the upper five by five 
+block of financial stocks in the upper middle plot in Figure \ref{intracor}.  
+We note that these stocks all correspond to large commercial banks 
+and that this plot demonstrates how the clustering algorithm can identify stocks in 
+a specific sub-industry from their daily relative returns.  We finally
+extract three more interesting blocks from our correlation heat map in Figure \ref{corrheatmap1},
+including the upper left red, orange, and yellow stocks, a similar block approximately a quarter 
+of the way down the off diagonal of the heat map, and a smaller set of four stocks about 
+four-fifths of the way down the off diagonal.  We zoom in on each of these portions of 
+the correlation heat maps in the
+lower left, center, and right plots in Figure \ref{intracor}. After inspecting their 
+ticker names, we note that they correspond to energy, industrial, and utility sectors respectively. 
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{intrasectorheatmap.eps}
+    \caption{Here we plot sub-correlation heat maps from left to right, top to bottom, 
+        between sectors of technology, financial,
+    energy, industrial, and utility stocks.  We also plot a subsector of five very highly 
+    correlated financial stocks in the upper right subplot.}
+    \label{intracor}
+\end{figure}
+
+Now that we have examined the correlation structure between the one hundred stocks that we 
+consider over a fixed time window, we would like to understand how these 
+pairwise correlations change over roughly a seven year time period. 
+This procedure to achieve this is carried out by 
+first selecting seven 252 day trading widows and then computing all pairwise 
+correlations between the top one hundred stocks by market capitalization that 
+we consider over each of these windows in 
+a manner similar to that used in \cite{Boginski-06}. We plot outlines of the corresponding 
+correlation histograms in Figure \ref{corrhist}.  
+%
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{corrhist.eps}
+    \caption{Here we plot histograms of the correlation between the daily relative returns of 
+        unique pairs of the one hundred largest market capitalized 
+        equities that we are considering over seven non-overlapping windows spanning a 
+        seven year timeframe. }
+    \label{corrhist}
+\end{figure}
+%
+
+First, note that all the histograms are nearly entirely positive valued.  This is 
+due to the fact that we only selected large cap stocks which tend to move together as 
+opposed to say an equity and an interest rate which are typically negatively correlated. 
+Secondly, note that during 2008, the correlation histogram is shifted further to the right
+relative to most of the other years. 
+This indicates that during the 2008 financial crisis, that the correlation between large cap 
+stocks increased on average which is an expected behavior during a high volatility time period. 
+We see the same effect 
+in 2011 which is most likely due to the European sovereign debt crisis.  During the remaining 
+years, the correlation histograms appear to be roughly the same centered around 0.3 with a 
+standard deviation of approximately 0.1. 
+
+We now consider subsets of these one hundred stocks in order to construct 
+four example portfolios that will be used as test cases to 
+demonstrate our Bayesian Value at Risk methods.
+The four portfolios that we construct include 
+a portfolio consisting of a single stock, a basket of technology stocks, a
+market cap weighted index portfolio, and a Markowitz type optimal market portfolio 
+\cite{Markowitz-52}.  Using the Bloomberg stock ticker naming convention, we choose COSTCO 
+as our first single name stock portfolio; we select this company due to the 
+resiliency of the wholesale retail market during the 2008 financial crisis in order to 
+be able to contrast this portfolio with the others that we will consider. 
+We next consider a portfolio of seven technology stocks.  This 
+consists of holding a static portfolio of $1, 13, 3, 21, 7, 17,$ and $19$ shares of 
+AAPL, MSFT, IBM, INTC, QCOM, HPC, and EMC respectively. The weights were chosen 
+so that the total dollar value of the shares of each individual stock are approximately on par 
+with each other. 
+The third portfolio that we consider is a 
+market portfolio created from a Markowitz mean-variance optimization procedure whose 
+construction we now describe.  
+We estimate the mean relative return vector $\hat{\mu}$ of the one hundred largest market 
+capitalized stocks that we consider  
+and their empirical covariance matrix $\hat{\Sigma}$ using the full seven years of 
+equity relative returns in our dataset.  
+The portfolio construction procedure consists of estimating a weight vector $w = (w_1,\ldots,w_{100})$ 
+that corresponds to our relative holdings of each 
+of these stocks by solving the following constrained quadratic program 
+%
+\begin{equation}
+    \tilde{w}=\underset{w}{\mathrm{argmin}} \:w^T\hat{\Sigma} w,\:\:\mathrm{such\:\:that\:\:} w^T\hat{\mu}
+    = \mu_p,
+    \quad \mathrm{and}\quad 
+    \sum_{i=1}^{100} w_i = 1,\quad \mathrm{where}\quad w_i\in[0,1],
+\end{equation}
+%
+for $\tilde{w}$. Here we seek the portfolio with weight vector $w$ that minimizes the
+total portfolio relative return variance 
+$w^T\hat{\Sigma}w$  subject to the following constraints: the portfolio has an expected return of $\mu_p$, 
+the portfolio weights are all positive (i.e. we cannot short any of the equity securities 
+that compose the portfolio), and the portfolio weights sum to one. 
+
+We apply MATLAB's default quadratic program solver to find the optimal weights  
+and note that there are seven stocks that have non-negligible weights:    
+AAPL, AMZN, GILD, BIIB, ESRX, TJX, and MCK.  Their associated weight vector is given by
+%
+\begin{equation}
+\tilde{w} = (0.182,0.162,0.171,0.196,0.041, 0.177,0.070).
+\end{equation}
+We finally construct the daily 
+relative return time series of this portfolio so that it may be used to demonstrate our Bayesian 
+VaR methods. 
+
+Lastly, we create a market capitalization weighted portfolio using the top one hundred 
+market capitalized stocks from the S\&P 500 survivors that we are considering.  In order to 
+construct this index, we extracted time series of daily shares outstanding for each of  
+the equities in our data set in order to create the equity weights.  We then used the weighted 
+average daily price of all of the stocks in our data set to arrive at a total daily index price. 
+We note that since we are only initially considering the 
+largest one hundred stocks by market capitalization in the S\&P 500 survivor index, this portfolio 
+effectively models the index itself; the relative returns of this portfolio have a correlation 
+of approximately 0.99 with the broader S\&P 500 index relative returns over the seven year time 
+frame that we are considering. 
+
+Before turning to selecting a model for the relative returns of these test portfolios
+, we would like to discuss a 
+few interesting features of the prices and returns of  
+each of these four portfolios.  Specifically, there are three periods of relatively high volatility
+in each portfolio; 
+the first occurred during the 2008 financial crisis and the second during the European sovereign debt 
+crisis in the Fall of 2011.  Due to the high equity volatility during the financial crisis, the 
+greatest single day loss and gain occurred in the Fall of 2008 for each of the four portfolios.
+We display the price time series, relative return time series, and relative return histograms of our 
+four portfolios in Figure \ref{portfig}.
+%
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{portplt.eps}
+    \caption{In the left column of subplots we plot the price or index time series of the 
+    four portfolios that we have constructed from Jan 5, 2007 to Jan 19, 2014.  In the 
+    middle column, we plot their associated relative return time series, and in the right column 
+    we plot histograms of these relative returns.  Note that all histograms exhibit 
+    heavy tails which we will take into account when selecting a model for this data.}
+    \label{portfig}
+\end{figure}
+%
+
+We now select a parametric class of distributions that allows us to 
+model the relative return data depicted in each of the histograms in the right column of 
+subplots in Figure 
+\ref{portfig}.   We are mainly interested in the left tail behavior of these 
+distributions for VaR estimation purposes.  Our aim is to select a 
+single class of distributions that has enough freedom to 
+capture the overall structure of the relative return data but is not 
+too complex so that it necessitates a complicated model fitting 
+procedure.  With this in mind, we considered ten distributions that 
+are commonly used to model financial asset relative returns. After a preliminary
+investigation into the goodness of fit for each of these classes, 
+we then restricted our consideration to six distributions, which include the  
+Student's t distribution, Weibull distribution, 
+Gamma distribution, and in increasing order of generality, the 
+Pareto, generalized Pareto, and Burr Type XII (Burr) extreme value distributions.
+
+In Figure \ref{mlefit}, we fit each of these six distributions to our four portfolios' relative 
+return data through maximum likelihood estimation. Specifically, we apply a Nelder-Mead based optimization 
+procedure to fit these distributions to market data by maximizing their log-likelihood functions. 
+The initial point for the local optimizer is chosen in such a manner that we are able to 
+find a global maximum of each log-likelihood function.
+We next plot quantile-quantile (QQ) plots to compare the positive part of the 
+model and empirical loss distributions for our four portfolios out to 
+the $q=0.9994$ quantile of each loss distribution. 
+We note that the QQ-plots tend to disperse as we examine higher quantiles that correspond 
+to rare events such daily losses in the five to ten percent range. This is the region of the loss 
+distribution
+that we are most interested in from a VaR estimation perspective.
+Of the four portfolios that we consider in Figure \ref{mlefit}, we find that the Burr  
+distribution tends to provide the best overall fit to the data that we seek to model.  
+%
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{mlefit.eps}
+    \caption{Here we display quantile-quantile (QQ) plots of the maximum likelihood best fit model
+    and empirical relative return loss distribution quantiles for the four 
+    portfolios defined above. We consider how well the Burr, Gamma, Student-t, Weibull,
+    Generalized Pareto, and Pareto distributions fit the data.
+    Note that the Burr distribution tends to fit the 
+    extreme quantiles that we are most interested in the best overall.}
+    \label{mlefit}
+\end{figure}
+%
+In addition to the above QQ-plot visual test, we examined how well each of the above distributions 
+fits a variety of randomly generated portfolios whose weights were chosen  
+from the one hundred largest market capitalized stocks that we are considering.
+We found that the Burr distribution provided the best overall fit in a wide 
+variety of cases from both visual inspection of QQ-plots as well as 
+from an Andersen-Darling based goodness of fit calculation.
+With this in mind, we will use the Burr distributions below to demonstrate our Bayesian 
+VaR methods.  Next, we summarize 
+relevant information related to the Burr distribution, its MLE estimation, and how it will be use in  
+a Bayesian model fitting framework.
+
+\section{Bayesian Value at Risk Estimation for the Burr XII Distribution} 
+
+The Burr Type XII distribution \cite{Burr-42} has been applied in a 
+wide variety of settings to model 
+heavy tailed data \cite{Rodriguez-77, Soliman-05, Tadikamalla-80}.  We 
+use these distributions in the context of modeling the positive part 
+of the relative return loss distributions of the four equity portfolios we previously constructed. 
+With this in mind, we describe properties of the Burr distribution 
+that will be important in our analysis below. 
+
+The probability distribution function $\phi(x;c,k)$ and 
+associated cumulative distribution function $\Phi(x;c,k)$ of the two dimensional family of 
+Burr distributions are given by 
+\begin{equation}
+    \phi(x;c,k)=c k \frac{x^{c-1}}{(1+x^c)^{k+1}} 
+    \quad\mathrm{and}\quad \Phi(x;c,k) = 1-\left(1+x^c\right)^{-k},
+    \label{burrdis}
+\end{equation}
+%
+where here the model parameters satisfy $c,k>0$ and the domain of the 
+distribution is restricted to $x>0$.  We will need both the model 
+likelihood function $\mathcal{L}$ and associated log likelihood function $\ln\mathcal{L}$
+to compute the posterior distribution of the best fit model parameters via Bayes' theorem.
+Given observed data $x=(x_1,\ldots,x_n)$, which we will take to correspond to relative returns of 
+the four portfolios constructed in the previous section, 
+the model likelihood and log likelihood functions are given by 
+%
+\begin{equation}
+    \mathcal{L} = c^nk^n\prod_{i=1}^n\frac{x_i^{c-1}}{(1+x_i^c)^{k+1}} \quad\mathrm{and} 
+    \quad \ln\mathcal{L} = n\ln(ck) + (c-1)\sum_{i=1}^n\ln x_i
+    -(k+1)\sum_{i=1}^n\ln(1+x_i^c).
+    \label{burlog}
+\end{equation}
+%
+We first investigate fitting this class of distributions to data through maximum 
+likelihood estimation.  This problem has been investigated by several 
+authors \cite{Shao-02,Wingo-93,Wingo-93-2} and we summarize two important points. 
+First, one can differentiate the log likelihood function with 
+respect to both model parameters in order to derive two equations that, when set equal to zero, 
+determine the best fit MLE parameters for $c$ and $k$  denoted by 
+$\hat{c}$ and $\hat{k}$. By combining these equations, one can construct an 
+expression for $\hat{k}=\hat{k}(\hat{c},x_i)$ so that it suffices to find the 
+maximum likelihood estimate for $c$ to find the best fit model distribution. 
+One can substitute this expression into the log-likelihood function to reduce 
+the MLE problem to a one dimensional maximization problem over $c$. Moreover, 
+it is possible to show that the associated log likelihood is a strictly 
+concave function of $c$ so that a local optimizer can be utilized to 
+maximize the likelihood function.
+
+We now summarize a few other more traditional properties of this distribution that 
+will be used later.  Specifically, if $X$ is a Burr distributed random 
+variable, then its mean and variance are given by
+%
+\begin{equation}
+    \mathbb{E}(X) = k B\left(\frac{1}{c} + 1, k-\frac{1}{c}\right), 
+    \quad \mathrm{Var}(X) = k B\left(\frac{2}{c}+1,k-\frac{2}{c}\right)-\mu^2, 
+\end{equation}
+where here the beta function is defined by  $B(x,y)=\Gamma(x)\Gamma(y)/\Gamma(x+y)$. 
+The  quantile function for this distribution for $q\in[0,1]$ is positive valued and 
+given by
+%
+\begin{equation}
+    x(q) = \left[(1 - q)^{-1/k} - 1\right]^{1/c}.
+    \label{burrquant}
+\end{equation}
+%
+Next, we consider how to use the Burr distribution in our Bayesian model fitting 
+framework. We explore both a one and two dimensional problem along these lines. 
+In the one dimensional case, we first find the best fit model parameter $\hat{k}$ 
+via maximum likelihood estimation and then
+fit the second parameter $c$ using our Bayesian method to demonstrate the idea of this 
+model fitting procedure in a simple setting.  Next, we consider a two 
+dimensional analogue of this problem, by specifying a joint two dimensional prior distribution 
+over both  $c$ and $k$, followed by computing the related posterior distribution for this model which in 
+turn will be used to select the parameters of the 
+best fit Burr distribution for the data.  We start with the 
+estimation of the best fit $c$ model parameter assuming that $k$ is known. 
+
+\subsection{Unknown $c$ and Known $k$}
+
+We demonstrate the use of our Bayesian VaR methods in a one dimensional 
+setting by first finding the maximum likelihood parameter 
+for $k$ and then estimating $c$ by using Bayes' theorem.  
+This requires that we 
+place a prior distribution over the model parameter $c$ in equation (\ref{burrdis}).
+Since this parameter is always positive, we choose 
+a Gamma distribution with parameters $\alpha,\beta$ defined by
+%
+\begin{equation}
+    P(c; \alpha,\beta) = \frac{c^{\alpha-1}}{\beta^\alpha\Gamma(\alpha)}
+    \exp\left(-\frac{c}{\beta}\right), \label{bpri} 
+\end{equation}
+%
+where we take $\alpha = 4.0$ and $\beta = 1.5$ based on our MLE experience of the typical 
+values the $c$ parameter has realized. 
+
+We then use Bayes' theorem to combine the prior with the likelihood function of
+the Burr distribution to construct the associated posterior distribution.  Using 
+the posterior, we compute the best fit model parameter $c$ and an 
+associated Bayesian credible interval for this parameter.  Next, 
+note that we can write Bayes' theorem as 
+%
+\begin{equation}
+    \ln P(\Theta|x) \propto \ln(P (x|\Theta)) + \ln  P(\Theta).
+    \label{logbaythm}
+\end{equation}
+%
+This can be used to compute the posterior distribution $P(c|x)$ from 
+the prior (\ref{bpri}) and the Burr log-likelihood function (\ref{burlog}).
+Then we find the maximizer (MAP estimator) for the log of the posterior distribution.
+This 
+optimization problem is simpler in this case as we are working on 
+reasonable numerical scales instead of scales on the order of typical 
+values of a likelihood function.
+
+We apply a local optimizer in order to compute the MAP estimator 
+of the posterior distribution $P(c|x)$ by maximizing this as a function of $c$ and 
+denote the optimal value by $\hat{c}$.  
+Next, we compute our Bayesian credible interval at the $\alpha=0.95$ level by 
+defining a function 
+%
+\begin{equation}
+    I(z) = \left(\int_{c-}^{c+} P(c|x)dc - \alpha\right)^2,
+\end{equation}
+%
+where $c_-$ and $c_+$ are defined by taking the intersection of a level set $z$ with 
+the posterior distribution.  In order to find the $z$ corresponding 
+to the $\alpha$ confidence interval, we minimize $I(z)$ as a function of $z$.  
+The resulting $z$ value defines 
+a $\alpha$ Bayesian credible interval about our best fit model parameter $\hat{c}$ 
+which we denote by $[\hat{c}_-, \hat{c}_+]$.  Thus we have constructed three 
+Burr models with parameters $\{\hat{k},\hat{c}_-\}$, $\{\hat{k},\hat{c}\}$, and $\{\hat{k},\hat{c}_+\}$, 
+from which we will compute our associated VaR values from the Burr quantile function. 
+Finally, we compute the $q=0.99$ quantile of each of these three distributions by substituting 
+the three sets of model parameters into equation (\ref{burrquant}).  These provide us 
+with our portfolio risk measures.  We will apply this method on a running basis to 
+estimate both VaR bands as well as error bounds around these bands in our 
+later performance analysis.  Next, we outline a two dimensional version of this 
+procedure.
+
+\subsection{Unknown $c$ and Unknown $k$}
+
+We now consider a two dimensional full Bayesian model fitting procedure for 
+both the $c$ and $k$ parameters of the Burr distribution.  There are a few additional 
+complexities that arise in this case that we did not previously encounter. 
+We start by defining a bivariate Gaussian prior distribution 
+over both parameters and again apply equation (\ref{logbaythm}) in order to combine the now two dimensional 
+Burr likelihood function with the prior to construct a 
+posterior distribution $P(c,k|x)$ that we abbreviate by $\phi(c,k)$.  
+In all the examples we consider, the function $\phi(c,k)$ is 
+unimodal.  With this in mind, we again use a Nelder-Mead based optimizer to find the MAP 
+parameters $\hat{\theta}=(\hat{c}$, $\hat{k})$ that are maximizers of $\phi(c,k)$.  We next 
+construct a credible region about these parameters.  Specifically, we want 
+to define a region $B_\alpha\subset\mathbb{R}^2_+$ such that $\hat{\theta}\in B_\alpha$ and 
+%
+\begin{equation}
+    \int_{B_{\alpha}} \phi(c,k)dcdk = \alpha,
+ \end{equation}
+%
+where we again take $\alpha=0.95$ to require that 95\% of the probability mass under the
+posterior distribution is contained within $B_\alpha$. We construct this region by again taking a level set approach.  In particular, 
+we consider solutions to the equation $\phi(c,k)=z$ where here 
+$z\in [0,\max(\phi(c,k)))$.  Although these solution sets can exhibit several possible structures, 
+we find that in practice they define closed curves $C_\alpha$ that 
+bound regions in the upper half plane, i.e. $C_\alpha=\partial B_\alpha\subset\mathbb{R}^2_+$.
+We depict this behavior in Figure \ref{typcrv}.
+%
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{credplt.eps}
+    \caption{In the left subplot, we plot a typical unimodal posterior distribution $\phi(c,k)$; in the 
+        middle plot we intersect this graph with a level set $z=0.1$ and display 
+    the curve $C_\alpha$ given by the solution of the equation $\phi(c,k)=z$ that 
+    bounds a Bayesian credible region $B_\alpha$  in the right most subplot.}
+    \label{typcrv}
+\end{figure}
+%
+The region $B_\alpha$ constructed in this manner defines our $\alpha$ Bayesian credible region. 
+We will again select three models for VaR estimation purposes.  The first model corresponds to our 
+MAP estimator.  The second and third will be constructed by minimizing and maximizing the 99\%
+VaR by varying 
+the model parameters over $B_\alpha$. Any pair $(c,k)\in B_\alpha$ corresponds to 
+a Burr distribution with quantile function given in equation (\ref{burrquant}).  For a fixed 
+$q$, we seek to both maximize and minimize this function over $B_\alpha$.  Specifically, 
+we seek to find both
+%
+\begin{equation}
+    (\hat{c}_-,\hat{k}_-) \equiv \underset{(c,k)\in B_\alpha}{\mathrm{argmin}} \left[(1-q)^{-1/k} - 1 \right]^{1/c}\quad 
+    \mathrm{and}\quad
+    (\hat{c}_+,\hat{k}_+) \equiv \underset{(c,k)\in B_\alpha}{\mathrm{argmax}} \left[(1-q)^{-1/k} - 1 \right]^{1/c}.
+\end{equation}
+%
+
+This optimization consists of extremizing the quantile function 
+over $B_\alpha$.  We show that extreme values of this function are found on the 
+boundary of $B_\alpha$ so that we may reduce this optimization problem to a one dimensional 
+search over the boundary $\partial B_\alpha$.  Let $k_2>k_1>0$, $q\in[0,1]$, and $c>0$ be fixed. 
+Then the inequality 
+%
+\begin{equation}
+    \left[(1-q)^{-1/k_1}-1\right]^{1/c} > \left[(1-q)^{-1/k_2}-1\right]^{1/c},
+\end{equation}
+%
+shows that one can always either increase or decrease the quantile function by increasing or 
+decreasing the value of $c$ respectively, e.g. this function is monotone in $c$.  Now, we 
+note that for a fixed $k>0$ and $c_2>c_1>0$, that either 
+%
+\begin{equation}
+    \left[(1-q)^{-1/k}-1\right]^{1/c_1} > \left[(1-q)^{-1/k}-1\right]^{1/c_2}
+    \quad \mathrm{or}\quad 
+    \left[(1-q)^{-1/k}-1\right]^{1/c_1} < \left[(1-q)^{-1/k}-1\right]^{1/c_2},
+\end{equation}
+%
+where the first inequality holds if $k\in(0,\tilde{k})$ and the second holds if 
+$k\in(\tilde{k},\infty)$ where here $\tilde{k}=-\ln(1-q)/\ln(2)$.  In either case, 
+note that the quantile function is monotone as a function of $k$.  Since the 
+function is monotone in both its arguments, we conclude that the maximum and minimum of 
+the quantile function must occur on the boundary of the Bayesian credible region.  This optimization 
+is carried out by a brute force grid search over a discretized version of 
+the boundary of $B_\alpha$. 
+
+We next specify a two dimensional prior distribution over the $c$ and $k$ 
+parameters.  We center this prior around typical MLE values that we found 
+previously for both $c$ and $k$ as well as have it account for the past correlation that
+we have observed between these parameters.  We also incorporate 
+historical variances that we see in both the $c$ and $k$ MLE estimates 
+into the covariance matrix of the prior. All these goals can be achieved if we use a bivariate Gaussian 
+as a prior distribution.  Although such a function is supported over the entire plane, 
+we will choose its mean and covariance matrix in such a way that the probability that the 
+true parameters will be negative valued will be negligible. 
+This class of distributions depends on five parameters, 
+%
+\begin{equation}
+    \phi(c,k; \mu_c,\mu_k,\sigma_c,\sigma_k,\rho) 
+    =\frac{1}{\sqrt{4\pi^2|\Sigma|}}\exp\left(-\frac{1}{2} (x-\mu)^T\Sigma^{-1}(x-\mu)\right),
+\end{equation}
+where here 
+\begin{equation}
+         x =(c,k), \quad \mu = (\mu_c,\mu_k), \quad
+        \Sigma = \left(\begin{array}{cc}
+                \sigma_c^2 & \sigma_c\sigma_k\rho \\ 
+                \sigma_c\sigma_k\rho & \sigma_k^2
+        \end{array}\right), 
+\end{equation}
+%
+and all parameters are taken to be positive. We set all the 
+parameter values based on our experience with fitting the 
+Burr models using maximum likelihood.  In particular, we know the 
+approximate values and variances are both parameters as well as 
+the correlation between them from our previous MLE studies.
+
+To visually depict this method, we show a contour plot of the 
+prior distribution and an associated posterior 
+distribution in Figure \ref{pripost}. Next, after defining the posterior distribution, 
+we find the level set for the $0.9$ contour corresponding to the 
+curve that bounds 90\% of the probability mass of the posterior distribution. This is achieved by 
+varying the height $z$ of the level set via a binary search until the function 
+%
+\begin{equation}
+    I(z) = \left(\int_{B_\alpha}\phi(c,k)dcdk-\alpha \right)^2,
+\end{equation}
+%
+is minimized for $\alpha = 0.9$.  Here the integral is approximated by using the trapezoid 
+rule.  We plot the contour $\partial B_\alpha$ in red in Figure \ref{pripost}. 
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{priorpost.eps}
+    \caption{Here we plot the contours of a Gaussian prior and associated posterior distribution. We 
+    center the prior around the point $(c,k)=(1,300)$ based on our past experience with typical MLE 
+    values of the $c$ and $k$ parameters.  The contour labels denote how much probability mass is contained 
+    in the region bounded by the contour. The right plot is the associated posterior distribution
+    after we incorporate one hundred data points into a Burr log likelihood function 
+    and use Bayes' Theorem to 
+    compute the posterior distribution. The red points indicate extremeizers of the Burr quantile 
+    function on $\partial B_\alpha$.}
+    \label{pripost}
+\end{figure}
+
+In the left plot, we display the contours of a bivariate Gaussian with mean $(c,k)=(1,300)$ and 
+specify the standard deviation
+in the $c$ and $k$ directions to be $\sigma_c=0.5$ and $\sigma_k = 40$.  Finally, 
+we examine the historical correlation between the MLE estimates for the $c$ and $k$ parameters and 
+find that is it is approximately $\rho=0.6$.  Given this information, we can specify a covariance matrix 
+$\Sigma$ that defines the prior.
+Next, we apply Bayes' theorem using the one hundred most recent end of day returns of the Tech index  
+example portfolio and the associated Burr likelihood function to define the posterior distribution. 
+This is displayed in the right subplot in Figure \ref{pripost}. The contours on both plots are 
+labeled by how much volume under the distribution is contained in the region that they bound.  For 
+example, the $0.95$ contour corresponds to the 95\% Bayesian credible region in both of the plots.
+We note that the posterior distribution is significantly more localized than the prior distribution, i.e. 
+the variance in both the $c$ and $k$ directions has been greatly reduced.  This can be
+interpreted as the data reducing the uncertainty in the true value of the model parameters.  After 
+computing the posterior distribution,  our next step is to estimate its maximum in order to find 
+the MAP estimator that will be used for a subsequent VaR computation.  We also find the 
+maximum and minimum points on the boundary of the 
+90\% Bayesian credible region in order to construct error bounds on 
+our VaR estimator.  We plot these extreme values as red dots in the right subplot
+in Figure \ref{pripost}.   After computing the MAP estimator and the associated error bounds, we are 
+finished with one iteration of the algorithm.  The next step is to iterate this algorithm 
+along the return time series using data contained in a trailing window of a fixed length. 
+Finally, we iterate this procedure over our four test portfolios.  We plot the 
+results of this process as well as define and compute several performance metrics in the next 
+section. 
+
+\section{Performance Metrics and Testing}
+
+We now describe how to iteratively apply the above algorithm over the full time 
+series of each portfolio in order to construct running VaR estimates and error bounds 
+for our four test portfolios.  In 
+each example, we initially need to specify a prior distribution before observing the data. 
+We found that a Gaussian prior results in an algorithm that is numerical stable. 
+Also, the five parameters that this prior depends upon can be chosen from experience we developed in 
+the MLE estimation of the Burr distribution's $c$ and $k$ parameters.  Specifically, we select the center 
+of the Gaussian to be $(c,k)=(1,300)$ and define its covariance matrix in the same manner that 
+was mentioned in the previous section using the same $\sigma_c$, $\sigma_k$, and $\rho$. 
+values. In the one dimensional case, we keep the same mean and variance for the 
+free parameter. For a given time series, we then restrict to the first one hundred 
+data points and apply Bayes' theorem using a Burr distribution likelihood function 
+in order to construct the posterior for the 100th trading day.  We then follow the above 
+process to estimate both the VaR values and an associated VaR error bound for each portfolio.  
+This is then used as our VaR estimate for the 101st trading day.  After this day ends, 
+we shift our one hundred day trailing window to include the second through 101st trading 
+days and repeat the process using a new mean for the prior based on the MAP estimator from the 
+previous step until we reach the end of the data. The output of this method 
+is three time series for the VaR estimate and the associated lower and upper bounds of the 
+95\% credible interval.  We generate these time series for both the positive part of
+the return and loss distributions for the four test portfolios and 
+plot the lower and upper VaR bands in the one and two dimensional cases in 
+Figures \ref{perform1} and \ref{perform2}.  
+
+In Figure \ref{perform1}, we plot the realized P\&L for the COSTCO test portfolio in 
+blue, and the associated MAP estimator for the 1\% and 99\% VaR values in red using lookback 
+windows of varying sizes.  We also plot the endpoints
+of the error bounds in green and black which define 95\% credible intervals 
+about the VaR estimate.    
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{RollingWindow.eps}
+    \caption{In blue we plot the realized P\&L for the COSTCO portfolio that we consider from 
+    2008 to 2013.  In red, we plot the 1\% and 99\% VaR estimates using a one hundred day trailing 
+    window, and in green and black we plot 95\% credible intervals about these estimates. We vary 
+    the number of points used in the lookback window to be 25, 50, 75, and 100 in order to visualize 
+    how the choice of window size effects the VaR estimates.}
+    \label{perform1}
+\end{figure}
+%
+Note that in the case of 25 data points the credible intervals are much larger than in
+the other cases.  This is due to the fact that the posterior distribution becomes increasingly 
+localized only as we increase the number of data points included in the estimation.  In addition, 
+the absolute VaR time series tends to be less stable in the case of fewer points.  This is caused 
+by individual data points having more influence over the model likelihood function as sample sizes 
+decrease.  The model seems to perform reasonably well in the one hundred data point example.  
+
+There are two features that we would like to note about the P\&L and the VaR time series.  
+First, there are days when we have very large moves in the P\&L that break the red 
+VaR band.  We say that a VaR break has occurred on these days.  The model then reacts by 
+increasing the VaR level (as well as associated error bars) on the next trading day as should 
+be expected.  Secondly, note that the VaR bands appear to track the volatility of the 
+P\&L time series fairly well.  In the high volatility period from March 2008 to September 2008, the
+VaR bands widen and react to the market.  Then as volatility becomes lower between 2009 and 2010, the 
+VaR bands contract and the absolute VaR level becomes smaller. This is a desirable feature of 
+a VaR model as it shows that the model reacts appropriately to the market. 
+
+Next, in Figure \ref{perform2}, we consider a similar plot but now using a fixed one hundred day 
+lookback window for each of our four test portfolios.  We again plot the P\&L time series of 
+each portfolio in blue, the associated VaR estimates in red, and the 95\% error bars in green and 
+black.  In addition, we plot the MLE VaR estimate for comparison purposes in yellow. 
+%
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{PA2D.eps}
+    \caption{In blue we plot the daily P\&L time series for each of the four test portfolios that 
+     we consider.  The red curves correspond to the daily VaR levels determined by the MAP 
+     estimator from the posterior distributions and the green and black bands define 95\% 
+     confidence intervals about these MAP estimators.  The yellow curves are the corresponding 
+     VaR levels set using MLE estimation and are displayed so that one may compare them to the 
+     Bayesian VaR bands.}
+    \label{perform2}
+\end{figure}
+%
+Overall, we feel that the Bayesian VaR estimate tends to be slightly more stable and  
+tracks the portfolio P\&L better than the MLE VaR estimate.  We finally note that the outermost black 
+bands tend to react very strongly when the P\&L changes from low to high volatility periods. 
+This can be seen in the Market Cap and Tech portfolios for example near the start of the 2009 
+period.  This indicates that the error inherent in the MAP estimator is greater than that 
+in the MLE counterpart. 
+
+We finally provide several statistics that describe how well both the MLE and Bayesian VaR estimates 
+perform in 
+terms of VaR breaks as well as how well they track the P\&L time series of each portfolio.  We 
+consider four different performance metrics at the 99\% VaR level for both the MLE and Bayesian 
+estimators in both the one and two dimensional examples described above. 
+The first performance metric we consider is the VaR break percentage.  At the end of any 
+given trading day, we use all P\&L information that we have gathered up to that point to 
+determine an appropriate 99\% VaR level to set for the portfolio tomorrow.  If the P\&L 
+tomorrow exceeds this level either on the low or high side, we say that a VaR break has occurred.
+In order to compute the VaR break percentage, we count the total number of VaR breaks over the 
+timeframe that we are testing our model and divide by the total number of trading days considered. 
+If the model performs well, we would expect to have a VaR break approximately 1\% of the time.
+Secondly, the absolute size of the VaR breaks is important to a portfolio manager or risk analyst.
+A VaR break of \$1 on a portfolio with a typical value of \$100 is not as significant of an 
+event as say a VaR break of \$50.  We call the second performance measure the VaR Break 
+Out Ratio; it is computed by averaging the VaR break size of all breaks that occurred 
+over the total time that we are testing the portfolio. 
+We present our VaR Break Out Ratio numbers in normalized form so that if current margin levels 
+at are \$100 a VaR Break Out Ratio of 1.50 corresponds to a VaR break of \$150 beyond the VaR value set at 
+the beginning of that day.  The average VaR Break Out over the duration of the time series is 
+presented in the Break Out Ratio rows of the below tables.  Third, we record the maximum VaR 
+break that occurred over the testing period and represent this number in the same 
+form as the VaR Break Out Ratio value.  This is used to indicate the worst break that occurred 
+on a relative basis over the testing timeframe.  
+
+Finally, we construct 
+a fourth performance metric that indicates how well a given model tracks the P\&L time series 
+of a portfolio.  In times of low volatility, the VaR bands should contract in order to 
+properly adapt to the P\&L time series of the portfolio and should exhibit the opposite behavior 
+during times of high volatility.  We try to quantify this behavior with the following performance 
+metric.  Let $p=\{p_1,\ldots,p_n\}$ denote the P\&L time series of a portfolio, and 
+let $v^-=\{v_1^-,\ldots,v_n^-\}$ and $v^+=\{v_1^+,\ldots,v_n^+\}$ denote the low and high 
+VaR bands set by any model.  We define a VaR band distance performance measure by   
+%
+\begin{equation}
+    m(p,v^-,v^+)  = \frac{\sum_{i=1}^n \min\left(|v_i^+-p_i| ,|v_i^--p_i|\right)}{\sum_{i=1}^n p_i},
+\end{equation}
+%
+that is designed to assess how well the model tracks the P\&L of the portfolio. Smaller 
+values of $m(p,v^-,v^+)$ indicate that the VaR model tracks the  P\&L better than 
+larger values. We call this measure the VaR Distance and report it in the final two rows  
+of the performance metrics Tables \ref{tab1} and \ref{tab2}. 
+%
+
+In Table \ref{tab1}, we display the performance metrics for the one dimensional 
+model assuming that $k$ is known and $c$ is an unknown parameter.  
+\begin{table}
+    \centering
+\begin{normalsize}\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Performance Metric}&\textbf{Costco}&\textbf{Market Cap}&\textbf{Market Port}&\textbf{Tech Index}\\\hline
+\textbf{MAP Break Percentage}&0.008&0.002&0.006&0.005\\\hline
+\textbf{MLE Break Percentage}&0.008&0.002&0.006&0.006\\\hline
+\textbf{MAP Break Out Ratio}&0.308&0.268&0.077&0.121\\\hline
+\textbf{MLE Break Out Ratio}&0.316&0.277&0.085&0.105\\\hline
+\textbf{MAP Break Out Max}&3.215&2.129&2.955&2.287\\\hline
+\textbf{MLE Break Out Max}&3.223&2.138&2.972&2.297\\\hline
+\textbf{MAP VaR Distance}&0.029&0.028&0.033&0.030\\\hline
+\textbf{MLE VaR Distance}&0.029&0.028&0.033&0.030\\\hline
+\end{tabular}
+\end{normalsize}
+\hspace{10pt}
+\caption{Performance metrics for the one dimensional Bayesian VaR method for the four 
+test portfolios.}
+\label{tab1}
+\end{table}
+We note that overall the MLE and MAP estimators perform quite similarly to one another.  Both have 
+VaR break percentages that are below 1\% for all four test portfolios.  They do differ slightly 
+in their Break Out Ratios.  In three of the four examples, the Bayesian method has a 
+lower average Break Out Ratio than the MLE method. The same is true for the maximum VaR 
+break; however, the differences are almost negligible in this case.
+
+Finally, we compute the same performance metrics in case of our two dimensional 
+model and display the results in Table \ref{tab2}.  The models are again 
+very similar in terms of VaR break percentages; however, the Bayesian method tends to 
+have a slightly greater Break Out Ratio and max VaR break than the MLE method.  Both 
+methods tend to track the P\&L time series to comparable degrees of accuracy. 
+
+\begin{table} 
+    \centering
+    \begin{normalsize}\begin{tabular}{|l|c|c|c|c|}
+\hline
+&\textbf{Costco}&\textbf{Market Cap}&\textbf{Market Port}&\textbf{Tech Index}\\\hline
+\textbf{MAP Break Percentage}&0.005&0.007&0.005&0.006\\\hline
+\textbf{MLE Break Percentage}&0.006&0.002&0.005&0.004\\\hline
+\textbf{MAP Break Out Ratio}&0.497&0.244&0.138&0.179\\\hline
+\textbf{MLE Break Out Ratio}&0.381&0.255&0.066&0.103\\\hline
+\textbf{MAP Break Out Max}&3.035&2.671&2.995&2.427\\\hline
+\textbf{MLE Break Out Max}&3.164&2.011&2.907&2.148\\\hline
+\textbf{MAP VaR Distance}&0.031&0.029&0.034&0.033\\\hline
+\textbf{MLE VaR Distance}&0.029&0.028&0.033&0.030\\\hline
+\end{tabular}
+\end{normalsize}
+\hspace{10pt}
+\caption{Performance metrics for the two dimensional Bayesian VaR method for the four 
+test portfolios.}
+\label{tab2}
+\end{table}
+
+\section{Conclusions and Further Development}   
+
+
+We finally summarize our results and provide comments related to numerical issues 
+that we encountered during the course of model development and 
+conclude by mentioning potential extensions and future work that may be interesting 
+to carry out.
+
+Initially, we reviewed Bayes' theorem and how it can be applied to fitting the 
+parameters of a parametric model to data.  We also described how one could construct 
+confidence intervals in a Bayesian framework about the estimated parameters by defining 
+the notion of a Bayesian credible region.  Next, we summarized the process of extracting 
+end of day price data for a variety of equities as well as our associated procedure for  
+cleaning and producing a final data set that was used in subsequent model 
+development.  We then turned to summarizing and displaying information related to the 
+data.  In particular, we first explored the correlation structure between 
+the one hundred largest stocks by market capitalization in order to develop intuition for 
+test portfolio construction.  We then performed a hierarchical correlation analysis 
+to understand the sector and sub-sector structure of the equity names that we are considering.
+We also examined how the distribution of pairwise correlations between stocks evolved over time 
+and found that they appear to be stationary.  Based on the results of this analysis, 
+we constructed four test portfolios to apply our Bayesian VaR methods on: a single equity 
+portfolio COSTCO, a tech index basket portfolio, 
+a Markowitz optimal portfolio, and a market capitalization weighted portfolio that mirrors the 
+S\&P 500 index.  We then proceeded to investigate how to model the relative return distributions of 
+these different portfolios by fitting a variety of traditional heavy tailed and extreme 
+value distributions to the data. We discovered that the class of Burr distributions 
+tended to fit the data better than the other classes of distributions we considered and selected 
+this model to be incorporated into our subsequent Bayesian VaR model.  We then 
+summarized information related to this class of distributions, including the quantile function 
+needed to estimate a portfolio's VaR, and then proceeded to apply Bayes' theorem to find 
+the model parameters that best fit the relative return data for the four test portfolios. 
+Initially, we assumed that we knew the $k$ parameter for this class of distributions, which 
+was found through MLE estimation and used the Burr model and Gaussian prior to construct 
+a posterior distribution for the remaining $c$ model parameter.  We then used this posterior distribution 
+to both estimate a value for the $c$ parameter by maximizing the distribution and computing 
+a credible interval about the parameter, by defining an interval around the best fit $c$ 
+parameter that contained 95\% of the probability mass of the posterior distribution. 
+This concluded a description of the one dimensional model framework, and we then turned to 
+developing a two dimensional fully Bayesian fitting procedure of the Burr distribution.
+Numerical stability reasons, lead us to specify 
+a two dimensional Gaussian prior over the two model parameters and then 
+again applied Bayes' theorem to produce an associated posterior distribution.  We then 
+described how to define the 95\% credible region associated with this posterior 
+distribution and why one only needs to search along the boundary of this region in order 
+to find the extreme values that the quantile function takes in the region.
+Finally, we defined several performance 
+measures and iteratively applied both the one and two dimensional models to our four 
+test portfolios over approximately seven years of end of day data.  We plotted our 
+associated VaR estimates  and error bounds, 
+summarized our performance metric results, and addressed the advantages 
+and draw backs of both methods.
+    
+We encountered a several numerical difficulties during the development of this model.  First, 
+since both Burr distribution model parameters must satisfy $c,k>0$, we initially considered using 
+a bi-variate Gamma distribution \cite{Furman-08}
+as a prior for our two dimensional model which only has support on  
+the first quadrant in the plane. However, we had considerable difficulty computing the normalization 
+constant for the posterior distribution associated with this prior over the full return time 
+series of our four test portfolios which led 
+us to utilize a Gaussian prior instead. The main cause of these difficulties was 
+due to the relatively slow asymptotics of this this distribution compared with a Gaussian; these issues 
+may be resolved if one used an improved numerical quadrature function. 
+We think it may be interesting to see how the results depend on 
+the choice of a prior; in particular, how does the overall variance of the prior influence the 
+MAP estimator and associated error bounds.  In addition to VaR, it would also be interesting 
+to estimate other quantities associated with a portfolio's relative return distribution.
+In particular, one such quantity that is becoming increasingly important 
+in practice is CVaR, which can be viewed as a weighted average of distinct VaR values;  
+it would be interesting to see how accurately we can estimate this statistic.  Finally, 
+we would like to examine how higher dimensional models can be fit within this framework.  
+There are several additional numerical complexities that are introduced when one considers
+models with more than two parameters and it would be interesting to see if these issues can 
+be resolved in order to construct reliable model estimates as well as associated confidence 
+intervals about the best fit model parameters.
+
+\begin{thebibliography}{100}
+\bibitem{Ausin-14} Ausin, M. Concepcion, Pedro Galeano, and Pulak Ghosh. A semiparametric 
+    Bayesian approach to the analysis of financial time series with applications to value 
+    at risk estimation. \emph{European Journal of Operational Research} 232.2 (2014): 350-358
+
+\bibitem{Bar-Joseph-01} BarJoseph, and Z. Gifford, D.K., and Jaakkola, T.S. Fast optimal 
+    leaf ordering for hierarchical clustering.  \emph{Bioinformatics} \textbf{17}, Suppl 
+    1:S22 -- 9. PMID: 11472989.
+
+\bibitem{Barone-Adesi-99} Barone-Adesi, Giovanni. VaR Without Correlations for Portfolios 
+    of Derivative Securities. Journal of Futures (1999).
+
+\bibitem{Berkowitz-99} Berkowitz, Jeremy. A Coherent Framework for Stress-Testing. 
+    FEDS Working Paper No. 99-29 (1999). 
+
+\bibitem{Boginski-06} Boginski, V et. al.  Mining market data: A network approach (2006).
+
+\bibitem{Burr-42} Burr, Irving. Cumulative frequency functions. \emph{The Annals of
+    Mathematical Statistics}, \textbf{13}, No. 2, p. 215-232 (1942).
+
+\bibitem{Butler-98} Butler, J.S and Barry Schachter.  Estimating value-at-risk with a 
+    percision measure by combining kernel estimation with historical simulation.  \emph{Review 
+    of Derivatives Research} 1.4 (1998): 371-390.
+
+\bibitem{Chen-05} Chen, Sing Xi, and Cheng Yong Tang. Nonparametric inference of value-at-risk 
+    for dependent financial returns. \emph{Journal of Financial Econometrics} 3.2 (2005): 227-255.
+
+\bibitem{Furman-08} Furman, E.  On a multivariate gamma distribution. \emph{Statistics and 
+    Probability Letters} \textbf{78} Is. 15, p.2353-2360 (2008).
+
+\bibitem{Gelman-03} Gelman, Andrew, et. al. Bayesian Data Analysis: Second Edition (2003).
+    
+\bibitem{Hendricks-99}Hendricks, Darryll Evaluations of value-at-risk models using historical data. 
+    Federal Reserve Bank of New York Economic Policy Review 2.1 (1996): 39-69.
+
+\bibitem{Hoogerheide-08} Hoogerheide, Lennart and Herman van Dijk.  Bayesian Forecasting 
+    of Value at Risk and Expected Shortfall using Adaptive Importance Sampling.  Tinbergen 
+    Institute Discussion Paper (2008). 
+
+\bibitem{Longin-00} Longin, Francois M. From value at risk to stress testing: The extreme value 
+    approach. \emph{Journal of Banking \& Finance} 24.7 (2000): 1097-1130.
+
+\bibitem{Markowitz-52} Markowitz, Harry.  Portfolio Selection. The Journal of Finance. 
+    \textbf{7}, No. 1 p. 71-91 (1952).
+
+\bibitem{McNeil-00} McNeil, Alexander J., and Rudiger Frey.  Estimation of tail-related risk measures 
+    for heteroscedastic financial time series: and extreme value approach. \emph{Journal of 
+    empirical finance} 7.3 (2000): 271-300.
+
+\bibitem{McNeil-05} McNeil, Alexander and R\"{u}dinger Frey and Paul Embrechts.  
+    Quantitative Risk Management: Concepts, Techniques, and Tools.  Princeton Series in 
+    Finance (2005).
+
+\bibitem{Meucci-05} Meucci, Attilio. Risk and Asset Allocation.  Springer Finance (2005).
+
+\bibitem{Pritsker-06} Pritsker, Matthew.  The hidden dangers of historical simulation. \emph{Journal 
+    of banking \& finance} 30.2 (2006): 561-582.
+
+\bibitem{Pollard-07}  Pollard, Mathew.  Bayesian Value-at-Risk and the Capital Charge Puzzle. 
+SSRN: http://ssrn.com/abstract.Vol.1116542.2007.    
+
+\bibitem{Rodriguez-77} Rodriguez, Robert N. A guild to the Burr type XII distributions.
+    Bibmetrika. \textbf{64}: 1 p. 129-134 (1976).
+
+\bibitem{Scaillet-04}Scaillet, Olivier Nonparametric estimation and sensitivity analysis of 
+    expected shortfall. \emph{Mathematical Finance} 14.1 (2004): 115-129.
+
+\bibitem{Shao-02} Shao, Quanxi. Notes on maximum likelihood estimation for the three 
+    - parameter Burr XII distribution. \emph{Computational Statistics \& Data Analysis} 
+    \textbf{45} (2004) p. 675-687.
+
+\bibitem{Siu-04} Sui, Tak Kuen, Howell Tong, and Hailiang Yang.  One Bayesian value at risk: 
+    from linear to non-linear portfolios. Asia-Pacific Financial Markets 11.2 (2004): 161-184.
+
+\bibitem{Soliman-05} Soliman, A. A. Estimation of parameters of life from progressively 
+    censored data using Burr-XII model. Reliability, IEEE Transactions on \textbf{54}, 1. 
+    p. 34-42 (2005).
+
+\bibitem{Tadikamalla-80} Tadikamalla, PR. A look at the Burr and related distributions.
+    International Statistical Review. \textbf{48} p.337-344 (1980).
+
+\bibitem{Wingo-93} Wingo, Dallas R. Maximum Likelihood Estimation of Burr XII Distribution 
+    Parameters Under Type II Censoring.  \emph{Microelectron. Reliab.}, Vol. \textbf{33}, 
+    No. 9. pp. 1251-1257 (1993).
+
+\bibitem{Wingo-93-2} Wingo, Dallas R. Maximum Likelihood Estimation of Burr XII Distribution 
+    to Multiply (Progressively) Censored Life Test Data. \emph{Metrika} Vol. \textbf{40}, 
+    p. 203-210 (1993).
+    
+\end{thebibliography}
+\end{document}
+
