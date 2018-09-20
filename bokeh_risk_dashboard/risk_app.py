@@ -20,6 +20,7 @@ See the README.md file in this directory for instructions on running.
 """
 
 import logging
+import datetime
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -40,10 +41,13 @@ from bokeh.server.utils.plugins import object_page
 from bokeh.models.widgets import HBox, VBox, VBoxForm, PreText, Select, TextInput, DataTable, TableColumn, NumberFormatter
 
 # build up list of stock data in the daily folder
-maindf = pd.read_pickle('open_price_new.pkl')
+#MOD maindf = pd.read_pickle('open_price_new.pkl')
+maindf = pd.read_pickle('testdata.pkl')
 maindf.index = pd.to_datetime(maindf.index)
 maindf.index = pd.to_datetime([val.date() for val in pd.to_datetime(maindf.index)])
 maindf.index.name = 'date'
+today = (datetime.datetime.today()).strftime("%Y-%m-%d")
+year_ago = (datetime.datetime.today()-datetime.timedelta(days=365)).strftime("%Y-%m-%d")
 
 # Risk metric functions
 # See wikipedia
@@ -77,31 +81,34 @@ def daily_returns_df(df):
     return df/df.shift(1) - 1  
 
 def daily_cum_returns_df(df,winsz): 
-    return pd.rolling_sum(df,winsz).dropna()
+    return df.rolling(winsz).sum().dropna()
 
 def per_up_days_df(df,winsz):
     n = float(len(df))
     rtndf = daily_returns_df(df)
-    return pd.rolling_apply(rtndf, winsz, lambda x: len([v for v in x if v > 0])/float(winsz))
+    return rtndf.rolling(winsz).apply(lambda x: len([v for v in x if v > 0])/float(winsz))
 
 def annualized_volatility_df(df,winsz): 
-    return np.sqrt(252*pd.rolling_var(daily_returns_df(df),winsz))
+    return np.sqrt(252*daily_returns_df(df).rolling(winsz).var())
 
 def sharpe_ratio_df(df,winsz):
     rtndf = daily_returns_df(df)
-    return np.sqrt(252)*pd.rolling_mean(rtndf,winsz)/np.sqrt(pd.rolling_var(rtndf,winsz))
+    #return np.sqrt(252)*pd.rolling_mean(rtndf,winsz)/np.sqrt(pd.rolling_var(rtndf,winsz))
+    return np.sqrt(252)*rtndf.rolling(winsz).mean()/np.sqrt(rtndf.rolling(winsz).var())
 
 def worst_daily_loss_df(df,winsz): 
     tmpdf = daily_returns_df(df)
-    return pd.rolling_apply(tmpdf,winsz,lambda x: min(x))
+    #return pd.rolling_apply(tmpdf,winsz,lambda x: min(x))
+    return tmpdf.rolling(winsz).apply(lambda x: min(x))
 
 def VaR_df(df,winsz,qtile): 
     tmpdf = daily_returns_df(df)
-    return pd.rolling_quantile(tmpdf,winsz,qtile)  
+    return tmpdf.rolling(winsz).quantile(qtile)  
 
 def draw_down_df(df,winsz): 
     tmpdf = daily_returns_df(df).dropna().cumsum() 
-    return pd.rolling_apply(tmpdf,winsz,lambda x: draw_down(x))
+    #return pd.rolling_apply(tmpdf,winsz,lambda x: draw_down(x))
+    return tmpdf.rolling(winsz).apply(lambda x: draw_down(x))
 
 def get_ticker_data(ticker):
     data = maindf[ticker].dropna()
@@ -132,11 +139,12 @@ class StockApp(VBox):
     statsbox = Instance(VBox)
 
     # inputs
-    ticker1 = String(default="INTC")
+    #MOD ticker1 = String(default="INTC")
+    ticker1 = String(default='Total')
     ticker2 = String(default="Daily Prices")
     ticker3 = String(default='63')
-    ticker4 = String(default='2010-01-01')
-    ticker5 = String(default='2015-08-01')
+    ticker4 = String(default=year_ago)
+    ticker5 = String(default=today)
     ticker1_select = Instance(Select)
     ticker2_select = Instance(Select)
     ticker3_select = Instance(TextInput)
@@ -180,13 +188,14 @@ class StockApp(VBox):
         self.ticker1_select = Select(
             name='ticker1',
             title='Portfolio:',
-            value='MSFT',
-            options = ['INTC', 'Tech Basket', 'IBB', 'IGOV']
+            value='Total',
+            #MOD options = ['INTC', 'Tech Basket', 'IBB', 'IGOV']
+            options=list(maindf.columns.values)
         )
         self.ticker2_select = Select(
             name='ticker2',
             title='Risk/Performance Metric:',
-            value='Price',
+            value='Daily Prices',
             options=['Daily Prices', 'Daily Returns', 'Daily Cum Returns', 'Max DD Percentage', 'Percentage Up Days', 'Rolling 95% VaR', 'Rolling Ann. Volatility', 'Rolling Worst Dly. Loss', 'Ann. Sharpe Ratio']
         )
         self.ticker3_select = TextInput(
@@ -196,13 +205,13 @@ class StockApp(VBox):
         )
         self.ticker4_select = TextInput(
             name='ticker4',
-            title='Start Date:',
-            value='2010-01-01'
+            title='Start Date (yyyy-mm-dd):',
+            value=year_ago
         )
         self.ticker5_select = TextInput(
             name='ticker5',
-            title='End Date:',
-            value='2015-08-01'
+            title='End Date (yyyy-mm-dd):',
+            value=today
         )
 
     @property
@@ -254,11 +263,12 @@ class StockApp(VBox):
         )
 
         p.line(
-            'date', ticker,
+            'date', ticker, 
             line_width=2,
             line_join='bevel',
             source=self.source,
             nonselection_alpha=0.02
+            
         )
         return p
 
@@ -268,11 +278,25 @@ class StockApp(VBox):
         tdf = pltdf[ticker]
         histdf = tdf[((tdf > qlow) & (tdf < qhigh))]
         hist, bins = np.histogram(histdf, bins=50)
+        bin_td = tdf[-1]
+        if bin_td<min(bins):
+            bin_td = min(mins)
+        else:
+            binstemp = bins[bins<bin_td]
+            bin_td = min(binstemp, key=lambda x:abs(bin_td-x))
         width = 0.7 * (bins[1] - bins[0])
         center = (bins[:-1] + bins[1:]) / 2
         start = bins.min()
         end = bins.max()
         top = hist.max()
+
+        colors = []
+        legends = []
+        for one_bin in bins:
+            if one_bin == bin_td:
+                colors.append('red')
+            else:
+                colors.append('#2D80B9')
 
         p = figure(
             title=self.ticker1 + ' ' + self.ticker2 + ' Histogram',
@@ -284,7 +308,8 @@ class StockApp(VBox):
             x_axis_label = self.ticker2 + ' Bins',
             y_axis_label = 'Bin Count' 
         )
-        p.rect(center, hist / 2.0, width, hist)
+        p.rect(center, hist / 2.0, width, hist,color=colors)
+        p.rect(-10000,0.5,1,1,color='red',legend='End Date Bin')
         return p
 
     def make_plots(self):
@@ -308,9 +333,18 @@ class StockApp(VBox):
 
     def input_change(self, obj, attrname, old, new):
         if obj == self.ticker5_select:
-            self.ticker5 = new
+            try:
+                datetime.datetime.strptime(new,'%Y-%m-%d')
+                self.ticker5 = new
+            except:
+                self.ticker5_select.value = self.ticker5 = today
         if obj == self.ticker4_select:
-            self.ticker4 = new
+            try:
+                datetime.datetime.strptime(new,'%Y-%m-%d')
+                self.ticker4 = new
+            except:
+                date_st = (datetime.datetime.today()-datetime.timedelta(days=365)).strftime("%Y-%m-%d")
+                self.ticker4_select.value = self.ticker4 = year_ago
         if obj == self.ticker3_select:
             self.ticker3 = new
         if obj == self.ticker2_select:
