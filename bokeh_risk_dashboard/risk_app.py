@@ -279,21 +279,27 @@ class StockApp(VBox):
         histdf = tdf[((tdf > qlow) & (tdf < qhigh))]
         hist, bins = np.histogram(histdf, bins=50)
         bin_td = tdf[-1]
+        print(bin_td)
+        print(max(bins))
+        print(hist[-1])
         if bin_td<min(bins):
-            bin_td = min(mins)
+            bin_td = min(bins)
+        elif bin_td>max(bins):
+            bin_td = max(bins)
         else:
             binstemp = bins[bins<bin_td]
             bin_td = min(binstemp, key=lambda x:abs(bin_td-x))
         width = 0.7 * (bins[1] - bins[0])
         center = (bins[:-1] + bins[1:]) / 2
+        bin_td = min(center, key=lambda x:abs(bin_td-x))
         start = bins.min()
         end = bins.max()
         top = hist.max()
 
         colors = []
         legends = []
-        for one_bin in bins:
-            if one_bin == bin_td:
+        for cntr in center:
+            if cntr == bin_td:
                 colors.append('red')
             else:
                 colors.append('#2D80B9')
