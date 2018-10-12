@@ -2,7 +2,19 @@ from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 
 gauth = GoogleAuth()
-gauth.LocalWebserverAuth() # Creates local webserver and auto handles authentication.
+
+gauth.LoadCredentialsFile("mycreds.txt")
+if gauth.credentials is None:
+    # Authenticate if they're not there
+    gauth.LocalWebserverAuth()
+elif gauth.access_token_expired:
+    # Refresh them if expired
+    gauth.Refresh()
+else:
+    # Initialize the saved creds
+    gauth.Authorize()
+# Save the current credentials to a file
+gauth.SaveCredentialsFile("mycreds.txt")
 
 drive = GoogleDrive(gauth)
 
@@ -25,7 +37,7 @@ drivefolder='https://drive.google.com/open?id=1OvpQZdt5TYmwsIDBcILHP5Zez6PSdDWE'
 
 tgt_folder_id='1OvpQZdt5TYmwsIDBcILHP5Zez6PSdDWE'
 
-f = drive.CreateFile({'title':'dummy.csv', 'mimeType':'text/csv',
+f = drive.CreateFile({'title':'dummy2.csv', 'mimeType':'text/csv',
         "parents": [{"kind": "drive#fileLink","id": tgt_folder_id}]})
 
 f.SetContentFile('README.txt')
