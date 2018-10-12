@@ -278,31 +278,32 @@ class StockApp(VBox):
         tdf = pltdf[ticker]
         histdf = tdf[((tdf > qlow) & (tdf < qhigh))]
         hist, bins = np.histogram(histdf, bins=50)
+        print(len(bins),len(hist))
+        print(hist)
         bin_td = tdf[-1]
         print(bin_td)
-        print(max(bins))
-        print(hist[-1])
-        if bin_td<min(bins):
-            bin_td = min(bins)
-        elif bin_td>max(bins):
-            bin_td = max(bins)
-        else:
-            binstemp = bins[bins<bin_td]
-            bin_td = min(binstemp, key=lambda x:abs(bin_td-x))
         width = 0.7 * (bins[1] - bins[0])
         center = (bins[:-1] + bins[1:]) / 2
-        bin_td = min(center, key=lambda x:abs(bin_td-x))
-        start = bins.min()
-        end = bins.max()
-        top = hist.max()
 
-        colors = []
-        legends = []
+        center_p = []
+        for a, b in zip(center, hist):
+            if b != 0:
+                center_p.append(a)
+
+        bin_td = min(center_p, key=lambda x:abs(bin_td-x))
+        print(bin_td)
+        print(center)
+        if bin_td.size>1: bin_td = max(bin_td) 
+        start,end,top = bins.min(),bins.max(),(hist.max()+1)
+
+        colors,legends = [],[]
         for cntr in center:
             if cntr == bin_td:
                 colors.append('red')
             else:
                 colors.append('#2D80B9')
+
+        print(colors)
 
         p = figure(
             title=self.ticker1 + ' ' + self.ticker2 + ' Histogram',
@@ -349,10 +350,15 @@ class StockApp(VBox):
                 datetime.datetime.strptime(new,'%Y-%m-%d')
                 self.ticker4 = new
             except:
-                date_st = (datetime.datetime.today()-datetime.timedelta(days=365)).strftime("%Y-%m-%d")
                 self.ticker4_select.value = self.ticker4 = year_ago
         if obj == self.ticker3_select:
-            self.ticker3 = new
+            try:
+                int(new)
+                self.ticker3 = new
+            except:
+                self.ticker3_select.value = self.ticker3 = '63'
+
+
         if obj == self.ticker2_select:
             self.ticker2 = new
         if obj == self.ticker1_select:
