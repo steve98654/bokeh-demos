@@ -1,7 +1,7 @@
 # TODO 
 # put the selection option back in! 
 # remove bokeh symbol and the link-to-this link? 
-# Compare multiple portfolios?  Dropdown select? 
+# Compare multiple portfolios?  Dropdown select
 
 ## Questions: 
 # how to control spacing between vtable and htable boxes? 
