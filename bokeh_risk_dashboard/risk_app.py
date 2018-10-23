@@ -278,10 +278,7 @@ class StockApp(VBox):
         tdf = pltdf[ticker]
         histdf = tdf[((tdf > qlow) & (tdf < qhigh))]
         hist, bins = np.histogram(histdf, bins=50)
-        print(len(bins),len(hist))
-        print(hist)
         bin_td = tdf[-1]
-        print(bin_td)
         width = 0.7 * (bins[1] - bins[0])
         center = (bins[:-1] + bins[1:]) / 2
 
@@ -291,8 +288,6 @@ class StockApp(VBox):
                 center_p.append(a)
 
         bin_td = min(center_p, key=lambda x:abs(bin_td-x))
-        print(bin_td)
-        print(center)
         if bin_td.size>1: bin_td = max(bin_td) 
         start,end,top = bins.min(),bins.max(),(hist.max()+1)
 
@@ -302,8 +297,6 @@ class StockApp(VBox):
                 colors.append('red')
             else:
                 colors.append('#2D80B9')
-
-        print(colors)
 
         p = figure(
             title=self.ticker1 + ' ' + self.ticker2 + ' Histogram',
@@ -354,7 +347,15 @@ class StockApp(VBox):
         if obj == self.ticker3_select:
             try:
                 int(new)
-                self.ticker3 = new
+                date_format = '%Y-%m-%d'
+                a = datetime.datetime.strptime(self.ticker4, date_format)
+                b = datetime.datetime.strptime(self.ticker5, date_format)
+                delta = (b - a).days
+                if (int(new)>=len(self.df) 
+                or int(new)<1):
+                    self.ticker3_select.value = self.ticker3 = '63'
+                else:
+                    self.ticker3 = new
             except:
                 self.ticker3_select.value = self.ticker3 = '63'
 
