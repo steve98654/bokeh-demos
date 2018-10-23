@@ -348,9 +348,6 @@ class StockApp(VBox):
             try:
                 int(new)
                 date_format = '%Y-%m-%d'
-                a = datetime.datetime.strptime(self.ticker4, date_format)
-                b = datetime.datetime.strptime(self.ticker5, date_format)
-                delta = (b - a).days
                 if (int(new)>=len(self.df) 
                 or int(new)<1):
                     self.ticker3_select.value = self.ticker3 = '63'
