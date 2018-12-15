@@ -42,7 +42,26 @@ from bokeh.models.widgets import HBox, VBox, VBoxForm, PreText, Select, TextInpu
 
 # build up list of stock data in the daily folder
 #MOD maindf = pd.read_pickle('open_price_new.pkl')
+
+
+new_names = {'ARSQX':'Aristotle',
+'AEF':'Aberdeen',
+'POLRX':'Polen Capital',
+'CHASCVA (Proxy)':'Chartwell (Proxy)',
+'TYG':'Tortoise',
+'CUSEX':'Capital Group',
+'GIBIX':'Guggenheim',
+'OAKIX':'Oakmark',
+'SC (Proxy)':'Shafer (Proxy)',
+'IWO':'iShares Russel Growth',
+'Timber (Proxy)':'Timber (Proxy)',
+'PDBAX':'Prudential',
+'PDRDX':'Principal diversified',
+'ANGIX':'Angel oak'}
+
+
 maindf = pd.read_pickle('testdata.pkl')
+maindf = maindf.rename(new_names,axis=1)
 maindf.index = pd.to_datetime(maindf.index)
 maindf.index = pd.to_datetime([val.date() for val in pd.to_datetime(maindf.index)])
 maindf.index.name = 'date'
@@ -332,6 +351,7 @@ class StockApp(VBox):
         #self.statsbox.children = [self.pretext]
 
     def input_change(self, obj, attrname, old, new):
+        #TODO: take care of ensuring clean input
         if obj == self.ticker5_select:
             try:
                 datetime.datetime.strptime(new,'%Y-%m-%d')
@@ -350,11 +370,11 @@ class StockApp(VBox):
                 date_format = '%Y-%m-%d'
                 if (int(new)>=len(self.df) 
                 or int(new)<1):
-                    self.ticker3_select.value = self.ticker3 = '63'
+                    self.ticker3_select.value = self.ticker3 = str(len(self.df)-1)
                 else:
                     self.ticker3 = new
             except:
-                self.ticker3_select.value = self.ticker3 = '63'
+                self.ticker3_select.value = self.ticker3 = str(len(self.df)-1)
 
 
         if obj == self.ticker2_select:
