@@ -53,7 +53,7 @@ new_names = {'ARSQX':'Aristotle',
 'GIBIX':'Guggenheim',
 'OAKIX':'Oakmark',
 'SC (Proxy)':'Shafer (Proxy)',
-'IWO':'iShares Russel Growth',
+'IWO':'IShares Russel Growth',
 'Timber (Proxy)':'Timber (Proxy)',
 'PDBAX':'Prudential',
 'PDRDX':'Principal diversified',
@@ -209,7 +209,7 @@ class StockApp(VBox):
             title='Portfolio:',
             value='Total',
             #MOD options = ['INTC', 'Tech Basket', 'IBB', 'IGOV']
-            options=list(maindf.columns.values)
+            options=sorted(list(maindf.columns.values))
         )
         self.ticker2_select = Select(
             name='ticker2',
